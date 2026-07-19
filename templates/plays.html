@@ -51,6 +51,57 @@
         </div>
       </div>
 
+      <div class="snapshot-section" style="margin-top:16px;border-top:1px solid var(--slate-100);padding-top:16px">
+        <div class="snapshot-section-label">Content Overview</div>
+        <p class="muted" style="font-size:11.5px;margin:0 0 12px">
+          What this play actually sends, before opening a single account or contact — the messaging shape and
+          personas are constant for every account in this play; only the specific signal driving each account
+          changes which opening line it gets.
+        </p>
+
+        <div class="campaign-detail-grid" style="margin-top:0;padding-top:0;border-top:none">
+          <div class="snapshot-section" style="margin-top:0">
+            <div class="snapshot-section-label" style="font-size:10px">Personas Targeted</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              {% for persona in g.personas %}
+              <span class="pill pill-cluster">{{ persona }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="snapshot-section" style="margin-top:0">
+            <div class="snapshot-section-label" style="font-size:10px">Ad Platforms</div>
+            <p style="font-size:13px;color:var(--slate-700);margin:0">
+              {% if g.ads_involved %}<span class="pill pill-known">Yes &mdash; Meta</span>{% else %}<span class="pill pill-mode">Not used for this play</span>{% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="snapshot-section" style="margin-top:14px">
+          <div class="snapshot-section-label" style="font-size:10px">Email Messaging Overview &mdash; opening line by signal</div>
+          <ul class="status-list" style="gap:8px">
+            {% for hook in g.email_hooks %}
+            <li style="padding-left:14px"><span class="status-dot status-live" style="top:6px"></span><strong>{{ hook.signal_label }}:</strong> &ldquo;{{ hook.preview }}&rdquo;</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        {% if g.ads_involved %}
+        <div class="snapshot-section" style="margin-top:14px">
+          <div class="snapshot-section-label" style="font-size:10px">Ad Message Angle (constant across every account in this play)</div>
+          <p style="font-size:13px;color:var(--slate-700);margin:0 0 10px">{{ g.ad_angle }}</p>
+          {% for c in g.ad_creatives %}
+          <div class="ad-creative-row">
+            <div class="ad-creative-mockup" style="background:{{ c.mockup_bg }}">{{ c.mockup_icon }}</div>
+            <div class="ad-creative-meta">
+              <div class="ad-creative-headline">{{ c.label }}</div>
+              <div class="ad-creative-caption">&ldquo;{{ c.headline }}&rdquo; &mdash; {{ c.format }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
       <div class="snapshot-section" style="margin-top:16px">
         <div class="snapshot-section-label">Target Accounts ({{ g.accounts|length }})</div>
         <table class="evidence-table">

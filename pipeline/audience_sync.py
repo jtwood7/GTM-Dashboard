@@ -9,11 +9,25 @@ from datetime import datetime
 
 import db
 from pipeline.ad_creative import assign_creative
+from pipeline.knowledge_base import PLAYS
 
 SYNC_TYPES = {
     "meta_audience": "Meta Custom Audience",
     "hubspot_nurture": "HubSpot Nurture Sequence",
 }
+
+
+def sync_types_for_play(play_key: str) -> list:
+    """Not every play spends on paid — only sync to Meta for plays whose
+    tactical mix actually includes ads (see PLAYS[...]['ads_involved']).
+    Syncing every play to an ad audience regardless of its own tactical mix
+    was a real bug: Velocity Rescue/Renewal & Expansion/Win-Back Risk are
+    sales-led or relationship-led by design and were quietly getting a Meta
+    sync anyway."""
+    play = PLAYS.get(play_key)
+    if play and not play.get("ads_involved", False):
+        return [st for st in SYNC_TYPES if st != "meta_audience"]
+    return list(SYNC_TYPES)
 
 
 def known_contact_count(account_id: int) -> int:
@@ -48,7 +62,7 @@ def auto_sync_newly_qualified(today: datetime) -> int:
     from pipeline.plays import accounts_needing_action  # local import avoids a circular dependency with plays.py
     fired = 0
     for account in accounts_needing_action(today):
-        for sync_type in SYNC_TYPES:
+        for sync_type in sync_types_for_play(account["play"]):
             if not db.has_synced(account["company_name"], sync_type):
                 record_sync(account["id"], account["company_name"], sync_type, "automatic", play=account["play"])
                 fired += 1

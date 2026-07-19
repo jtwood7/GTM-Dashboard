@@ -178,7 +178,7 @@ def api_launch_play(play_key):
         return jsonify({"synced_accounts": 0, "synced_pairs": 0}), 200
     synced_pairs = 0
     for account in group["accounts"]:
-        for sync_type in audience_sync.SYNC_TYPES:
+        for sync_type in audience_sync.sync_types_for_play(play_key):
             audience_sync.record_sync(
                 account["id"], account["company_name"], sync_type, "manual",
                 play=play_key, campaign_name=campaign_name,

@@ -6,11 +6,23 @@ question: "why does this specific person, at this specific account, need to
 hear from us this week?" — a warm-account nudge, not a cold-outreach pitch.
 That answer is assembled from four layers, each a lookup table below:
 
-  1. SIGNAL_TRIGGER_VERB / SIGNAL_GERUND
-     — how to state the actual trigger event in a natural sentence.
+  1. SIGNAL_TRIGGER_VERB / SIGNAL_GERUND / SIGNAL_SAFE_HOOK
+     — how to open the copy without leaking internal tracking. Every signal
+       is tagged in SIGNAL_CUSTOMER_REFERENCEABLE: signals that are
+       first-party or public (their own product usage, their own contract,
+       a public facility announcement) can be named directly via
+       SIGNAL_TRIGGER_VERB/SIGNAL_GERUND ("Saw that {company} recently...").
+       Signals that only exist because we're tracking them from outside
+       (a pricing-page visit, an ad click, third-party intent data, a
+       LinkedIn role change, a competitor search) are NOT safe to state to
+       the recipient as an observed fact — that reads as surveillance, not
+       insight. Those use SIGNAL_SAFE_HOOK instead: a natural reach-out
+       reason that doesn't reveal the tracking mechanism.
   2. SIGNAL_IMPLICATION
-     — what that event typically means for the deal/account, independent of
-       persona.
+     — why this matters TO THE RECIPIENT, in second-person customer voice.
+       This is not "what does this mean for our pipeline" (that's internal
+       sales analysis and belongs in call_script_notes, which really are
+       rep-only) — it's "why should the person reading this email care."
   3. TITLE_FRAME
      — what THIS specific title (not just functional area) actually cares
        about day to day, and the TRACTIAN value tied to that. Unchanged from
@@ -19,6 +31,9 @@ That answer is assembled from four layers, each a lookup table below:
   4. INDUSTRY_CHALLENGE / STAGE_FALLBACK_IMPLICATION
      — supporting texture: an industry-specific pain point, and a
        stage-appropriate fallback for accounts with no fresh signal at all.
+       STAGE_FALLBACK_IMPLICATION is customer-voiced too — it must never
+       name our internal lifecycle-stage labels (Lead/MQL/SQL) to the
+       recipient; nobody should read an email that implies "you are an SQL."
 
 content_generator.py assembles these into the actual copy; this file only
 holds the domain content so the messaging logic can be read/edited on its
@@ -26,57 +41,88 @@ own, the same way knowledge_base.py holds the scoring domain.
 """
 
 # ---------------------------------------------------------------------------
+# Which signals are safe to name directly to the recipient as an observed
+# fact, vs. which ones would reveal that we're tracking them from outside.
+# True  = first-party (their own usage/contract) or public (news) — fine to
+#         say "we saw X" because X is something they'd expect us to know or
+#         is public information.
+# False = only exists because of ad/intent/behavioral tracking, or is a
+#         claim about a specific person's behavior we can't be sure the
+#         recipient is even aware of (e.g. "your champion went quiet") —
+#         these use SIGNAL_SAFE_HOOK instead of naming the tracked behavior.
+# ---------------------------------------------------------------------------
+SIGNAL_CUSTOMER_REFERENCEABLE = {
+    "usage_above_contracted_capacity": True,
+    "deal_stalled_in_stage": False,
+    "single_threaded_opportunity": False,
+    "champion_engagement_drop": False,
+    "account_surge_score_threshold": False,
+    "pricing_page_revisit_new_contact": False,
+    "intent_surge_category_keywords": False,
+    "ad_engagement_spike": False,
+    "renewal_window_approaching": True,
+    "reactivated_engagement": False,
+    "competitor_evaluation_activity": False,
+    "company_expansion_event": True,
+}
+
+# ---------------------------------------------------------------------------
 # Layer 1: how to state the trigger event itself, in plain sentences.
-# SIGNAL_TRIGGER_VERB fits "{company} recently {verb}."
-# SIGNAL_GERUND fits "...while also {gerund}."
+# SIGNAL_TRIGGER_VERB fits "{company} recently {verb}." Only ever used for
+# signals marked customer-referenceable above.
+# SIGNAL_GERUND fits "...while also {gerund}." — same restriction.
 # ---------------------------------------------------------------------------
 SIGNAL_TRIGGER_VERB = {
     "usage_above_contracted_capacity": "started running above its contracted sensor capacity",
-    "deal_stalled_in_stage": "stalled in its current deal stage",
-    "single_threaded_opportunity": "settled into a single-threaded deal, with only one contact engaged",
-    "champion_engagement_drop": "had its primary contact go quiet or change roles",
-    "account_surge_score_threshold": "started showing a surge in buying-stage intent",
-    "pricing_page_revisit_new_contact": "picked up a new contact browsing the pricing page",
-    "intent_surge_category_keywords": "showed a spike in category research activity",
-    "ad_engagement_spike": "had multiple contacts engage with our ads",
     "renewal_window_approaching": "moved into its contract renewal window",
-    "reactivated_engagement": "had a dormant contact re-engage",
-    "competitor_evaluation_activity": "started actively researching a competing solution",
     "company_expansion_event": "announced a new or expanding facility",
 }
 
 SIGNAL_GERUND = {
     "usage_above_contracted_capacity": "running above its contracted sensor capacity",
-    "deal_stalled_in_stage": "stalling in its current deal stage",
-    "single_threaded_opportunity": "showing only one engaged contact on the deal",
-    "champion_engagement_drop": "losing engagement from its primary contact",
-    "account_surge_score_threshold": "showing a surge in buying-stage intent",
-    "pricing_page_revisit_new_contact": "picking up a new contact on the pricing page",
-    "intent_surge_category_keywords": "showing a spike in category research",
-    "ad_engagement_spike": "picking up ad engagement from multiple contacts",
     "renewal_window_approaching": "moving into its renewal window",
-    "reactivated_engagement": "seeing a dormant contact re-engage",
-    "competitor_evaluation_activity": "actively researching a competing solution",
     "company_expansion_event": "standing up a new or expanding facility",
 }
 
 # ---------------------------------------------------------------------------
-# Layer 2: what the trigger typically means for the deal/account, persona-
-# agnostic — grounded in real B2B sales/CS mechanics, not TOFU firmographics.
+# For signals NOT safe to name directly (SIGNAL_CUSTOMER_REFERENCEABLE is
+# False): a natural, lowercase clause — no leading capital, no trailing
+# period — that reads as a normal reason to reach out, without asserting we
+# observed the recipient's specific behavior. Fits mid-sentence, e.g. after
+# an em dash or "Reaching out because ...". May use {industry}.
+# ---------------------------------------------------------------------------
+SIGNAL_SAFE_HOOK = {
+    "deal_stalled_in_stage": "it's been a little while since we last connected, and I wanted to check back in directly rather than let it sit",
+    "single_threaded_opportunity": "I wanted to loop you in directly, rather than everything routing through a single point of contact",
+    "champion_engagement_drop": "I wanted to reach back out and make sure this still has the right person driving it on your end",
+    "account_surge_score_threshold": "a lot of {industry} teams are re-evaluating their approach to unplanned downtime right now, and it felt like the right time to reconnect",
+    "pricing_page_revisit_new_contact": "I wanted to make sure you had a direct line to me as you look into TRACTIAN, rather than getting things secondhand",
+    "intent_surge_category_keywords": "given where things are headed across {industry} on unplanned downtime, I wanted to make sure TRACTIAN was actually on your radar",
+    "ad_engagement_spike": "there's been some renewed interest in TRACTIAN from your team recently, and I wanted to reach out directly rather than leave it passive",
+    "reactivated_engagement": "it's been a bit since our last conversation, and I didn't want too much time to pass without checking back in",
+    "competitor_evaluation_activity": "teams evaluating a few different options before deciding is normal, and I wanted to make sure you had the full picture on TRACTIAN specifically",
+}
+
+# ---------------------------------------------------------------------------
+# Layer 2: why this matters TO THE RECIPIENT — second-person, no internal
+# sales/CRM jargon ("deal stage," "buying committee," "champion"), and never
+# a claim about specifically-tracked behavior for the not-customer-safe
+# signals above (that's what made the old copy read like internal analysis
+# leaking into a customer email).
 # ---------------------------------------------------------------------------
 SIGNAL_IMPLICATION = {
-    "usage_above_contracted_capacity": "When usage runs ahead of what's contracted, it's rarely a surprise to the account — they're already relying on more coverage than they're paying for, which makes the expansion conversation about formalizing reality, not proposing something new.",
-    "deal_stalled_in_stage": "Deals that sit past the typical time in stage usually aren't dead, they're just missing a forcing function — a new stakeholder, a fresh proof point, or a deadline that makes inaction cost something.",
-    "single_threaded_opportunity": "A deal riding on one relationship is one reassignment away from starting over. Widening the committee now is cheaper than rebuilding it after the champion leaves.",
-    "champion_engagement_drop": "Losing your primary contact's engagement — whether they've gone quiet or moved roles — is usually the leading indicator of a stalled deal, not a lagging one.",
-    "account_surge_score_threshold": "A surge that's both rising and spreading across the buying committee is a stronger signal than a single engaged browser — more than one person is now building a case internally.",
-    "pricing_page_revisit_new_contact": "A net-new visitor on pricing content usually means someone was just looped in — often by the existing champion trying to build internal support.",
-    "intent_surge_category_keywords": "Third-party research spikes on category terms tend to precede internal budget conversations, not follow them — the timing question is how soon, not if.",
-    "ad_engagement_spike": "When more than one person at an account starts engaging with the same ads, it's usually because the topic came up internally, not coincidence.",
-    "renewal_window_approaching": "Renewal conversations that arrive without an expansion angle already teed up tend to become pure price negotiations instead of growth conversations.",
-    "reactivated_engagement": "A contact re-engaging after going quiet is a narrow window — whatever brought them back is fresh in their mind right now, and won't stay that way.",
-    "competitor_evaluation_activity": "Active research on a competitor doesn't necessarily mean the deal is lost or the account is unhappy — it usually just means no one's made the case yet for why the alternative isn't actually better.",
-    "company_expansion_event": "A new facility coming online means new equipment, new failure modes, and no reliability process in place yet — the easiest time to get ahead of downtime is before the line starts running, not after the first outage.",
+    "usage_above_contracted_capacity": "If your team's relying on more sensor coverage than what's on the contract, it's worth getting that formalized rather than running on borrowed capacity — the risk is losing visibility right when you need it most.",
+    "deal_stalled_in_stage": "Evaluations that stretch on longer than expected usually aren't a sign the fit is wrong — it's usually just that priorities got pulled elsewhere for a while, which is exactly when a direct nudge helps more than another passive follow-up.",
+    "single_threaded_opportunity": "Decisions like this tend to move faster and hold up better once more than one person on your team has direct visibility into it — looping others in earlier usually beats a round of catch-up later.",
+    "champion_engagement_drop": "Plant and reliability priorities shift fast, and it's easy for a conversation like this to lose momentum through no fault of anyone's — a quick reconnect is usually all it takes to get it back on track.",
+    "account_surge_score_threshold": "When more of the right people at a company start paying attention to the same problem around the same time, that's usually the moment worth actually getting in front of, not waiting for a formal ask.",
+    "pricing_page_revisit_new_contact": "The more people on your team who have direct context on this, the smoother the actual decision tends to go later — worth making sure everyone's working from the same information.",
+    "intent_surge_category_keywords": "Unplanned downtime tends to become a priority in waves across an industry — when it's actively on people's minds, that's usually the best time to actually solve it, not after the next outage forces the issue.",
+    "ad_engagement_spike": "When a topic starts getting attention from more than one person on a team, it's usually because it's become genuinely relevant — worth addressing directly instead of letting it stay passive.",
+    "renewal_window_approaching": "Renewals tend to go better as growth conversations than as pure negotiations — getting ahead of it now leaves room to talk about where things are headed, not just what it costs to keep things as they are.",
+    "reactivated_engagement": "A little time passing doesn't usually mean the interest is gone — it just means something else took priority for a while, and reconnecting directly is usually enough to pick it back up.",
+    "competitor_evaluation_activity": "Comparing options before committing is normal and expected — the goal isn't to rush that, it's to make sure whatever you land on is actually judged on what it does for your team, not just the pitch.",
+    "company_expansion_event": "New capacity means new equipment and new failure modes before there's a reliability process in place to catch them — getting ahead of that before the line starts running is a lot cheaper than fixing it after the first outage.",
 }
 
 # ---------------------------------------------------------------------------
@@ -101,11 +147,11 @@ INDUSTRY_CHALLENGE = {
 # still grounded in real lifecycle-stage data, not generic filler.
 # ---------------------------------------------------------------------------
 STAGE_FALLBACK_IMPLICATION = {
-    "Lead": "Leads that haven't shown fresh engagement usually just need a reason to re-open the conversation, not a harder pitch.",
-    "MQL": "MQLs sitting quiet are often one relevant nudge away from moving — timing matters more than content at this stage.",
-    "SQL": "SQLs without a fresh signal are usually still viable, just waiting on the next concrete reason to prioritize this over everything else on their plate.",
-    "Opportunity": "An opportunity without a fresh signal is still a live deal — the absence of urgency is itself worth checking in on before it becomes a real stall.",
-    "Customer": "A healthy account with no fresh signal doesn't need outreach right now — that's what the health gate is for.",
+    "Lead": "Interest doesn't always show up as a reply or a click — sometimes it just needs a reason to pick back up, not a harder pitch.",
+    "MQL": "Timing matters more than content at this point — a well-timed, relevant nudge usually does more than a longer pitch would.",
+    "SQL": "Going quiet for a stretch doesn't usually mean the interest is gone — it's more often a sign something else took priority for a while.",
+    "Opportunity": "A quiet stretch on an active evaluation is worth a direct check-in before it turns into an actual stall.",
+    "Customer": "Usage patterns already point to room to grow here — worth a direct conversation about it rather than waiting for a formal ask.",
 }
 
 # ---------------------------------------------------------------------------

@@ -23,8 +23,10 @@ from pipeline.knowledge_base import ANTHROPIC_MODEL, FUNCTIONAL_AREAS, PLAYS, SI
 from pipeline.messaging import (
     EMAIL_CTA_EXPERIMENT,
     INDUSTRY_CHALLENGE,
+    SIGNAL_CUSTOMER_REFERENCEABLE,
     SIGNAL_GERUND,
     SIGNAL_IMPLICATION,
+    SIGNAL_SAFE_HOOK,
     SIGNAL_TRIGGER_VERB,
     STAGE_FALLBACK_IMPLICATION,
     title_frame,
@@ -166,34 +168,77 @@ def _second_signal(account: dict, top_signal: dict) -> dict:
     return remaining[0] if remaining else None
 
 
+NO_SIGNAL_HOOK = "it's been a bit since there was any fresh activity here, and I wanted to check back in directly rather than let it go quiet"
+
+
 def _deal_context_clause(account: dict) -> str:
-    """Extra account-specific texture for Opportunity-stage accounts —
-    naming the actual deal size/stage, not just the signal."""
+    """Extra account-specific texture for Opportunity-stage accounts — the
+    dollar figure only, not our internal deal-stage taxonomy (a customer
+    doesn't think of themselves as being "in Technical Validation")."""
     if account["lifecycle_stage"] == "Opportunity" and account.get("deal_amount"):
-        return f" (currently a ${account['deal_amount']:,.0f} opportunity in {account['deal_stage']})"
+        return f" (a ${account['deal_amount']:,.0f} opportunity currently in motion)"
     return ""
 
 
-def _trigger_clause(company: str, account: dict, top_signal: dict) -> str:
-    """Short clause naming the actual trigger — used standalone in the call
-    script/InMail; the email uses the longer _trigger_paragraph below."""
-    if not top_signal:
-        return f"been in {account['lifecycle_stage']} without a fresh signal recently"
-    verb = SIGNAL_TRIGGER_VERB.get(top_signal["signal_type"], "had some relevant recent activity")
-    return f"{company} recently {verb}"
+def _trigger_fragment(account: dict, signal: dict, industry_lower: str) -> tuple:
+    """Returns (fragment, is_observed_fact) for a single signal.
+
+    is_observed_fact=True: fragment is a subject+verb clause ("{company}
+    recently expanded to a second facility") safe to prefix with "saw that"
+    — only true for signals that are first-party (their own usage/contract)
+    or public (a facility announcement), per SIGNAL_CUSTOMER_REFERENCEABLE.
+
+    is_observed_fact=False: fragment is already a complete, natural,
+    first-person reach-out reason (SIGNAL_SAFE_HOOK) — never prefixed with
+    "saw that", since for these signal types we're not entitled to tell the
+    recipient we observed their specific behavior (a pricing-page visit, an
+    ad click, competitor research, a colleague going quiet) without it
+    reading as surveillance.
+    """
+    if not signal:
+        return NO_SIGNAL_HOOK, False
+    signal_type = signal["signal_type"]
+    if SIGNAL_CUSTOMER_REFERENCEABLE.get(signal_type, False):
+        verb = SIGNAL_TRIGGER_VERB.get(signal_type, "had some relevant recent activity")
+        return f"{account['company_name']} recently {verb}", True
+    hook = SIGNAL_SAFE_HOOK.get(signal_type, "I wanted to reach out directly")
+    return hook.format(industry=industry_lower), False
 
 
-def _trigger_paragraph(company: str, account: dict, top_signal: dict, second_signal: dict) -> str:
-    if not top_signal:
-        return f"{company} has been sitting in {account['lifecycle_stage']} without a fresh signal in the last 30 days."
-    verb = SIGNAL_TRIGGER_VERB.get(top_signal["signal_type"], "had some relevant recent activity")
+def _trigger_clause(account: dict, top_signal: dict, industry_lower: str) -> str:
+    """A ready-to-use standalone clause for the call script intro / InMail —
+    grammatical on its own; callers should NOT add their own "saw that"
+    prefix, since that's only correct for the observed-fact case."""
+    fragment, is_fact = _trigger_fragment(account, top_signal, industry_lower)
+    return f"saw that {fragment}" if is_fact else fragment
+
+
+def _trigger_paragraph(account: dict, top_signal: dict, second_signal: dict, industry_lower: str) -> str:
+    fragment, is_fact = _trigger_fragment(account, top_signal, industry_lower)
     deal_context = _deal_context_clause(account)
+    if not is_fact:
+        sentence = fragment[0].upper() + fragment[1:]
+        return f"{sentence}{deal_context}."
     second_clause = ""
-    if second_signal:
+    if second_signal and SIGNAL_CUSTOMER_REFERENCEABLE.get(second_signal["signal_type"], False):
         gerund = SIGNAL_GERUND.get(second_signal["signal_type"])
         if gerund:
             second_clause = f", while also {gerund}"
-    return f"Saw that {company} recently {verb}{deal_context}{second_clause}."
+    return f"Saw that {fragment}{deal_context}{second_clause}."
+
+
+def signal_opening_preview(signal_type: str, company_placeholder: str = "[Company]",
+                            industry_placeholder: str = "your industry") -> str:
+    """A representative, capitalized opening sentence for this signal type —
+    used on the Plays tab so a manager can preview what the emails will
+    actually open with, per driving signal, without opening an individual
+    account/contact. Reuses the exact same _trigger_fragment logic real
+    generation uses, so the preview can't drift out of sync with reality."""
+    fake_account = {"company_name": company_placeholder, "lifecycle_stage": "Opportunity", "deal_amount": None}
+    fragment, is_fact = _trigger_fragment(fake_account, {"signal_type": signal_type}, industry_placeholder)
+    if is_fact:
+        return f"Saw that {fragment}."
+    return fragment[0].upper() + fragment[1:] + "."
 
 
 def _implication_sentence(account: dict, top_signal: dict) -> str:
@@ -214,10 +259,11 @@ def _template_content(contact: dict, account: dict, top_signal: dict, play_key: 
     signal_label = SIGNAL_LIBRARY.get(top_signal["signal_type"], {}).get("label") if top_signal else None
 
     # --- Email: trigger -> implication/persona priority -> TRACTIAN value -> CTA ---
-    trigger_para = _trigger_paragraph(company, account, top_signal, second_signal)
+    trigger_para = _trigger_paragraph(account, top_signal, second_signal, industry_lower)
     implication = _implication_sentence(account, top_signal)
     industry_challenge = INDUSTRY_CHALLENGE.get(account["industry"])
-    implication_para = f"{implication} For a {title}, that usually comes down to {frame['cares_about']}."
+    article = "an" if title[0].upper() in "AEIOU" else "a"
+    implication_para = f"{implication} For {article} {title}, that usually comes down to {frame['cares_about']}."
     if industry_challenge:
         implication_para += f" That's especially true in {industry_lower}, where {industry_challenge}."
     value_para = f"That's the gap TRACTIAN closes for teams like yours — it {frame['value']}."
@@ -234,10 +280,10 @@ def _template_content(contact: dict, account: dict, top_signal: dict, play_key: 
     )
 
     # --- Call script: one natural, punchy opening sentence + rep notes ---
-    trigger_clause = _trigger_clause(company, account, top_signal)
+    trigger_clause = _trigger_clause(account, top_signal, industry_lower)
     intro_line = (
         f"Hi {greeting_name}, this is [Your Name] with TRACTIAN — we help {industry_lower} plants "
-        f"catch equipment problems before they cause downtime — saw that {trigger_clause}, so wanted "
+        f"catch equipment problems before they cause downtime — {trigger_clause}, so wanted "
         f"to check whether {frame['short_focus']} is on your plate right now — got 30 seconds?"
     )
     signal_detail_note = _clean_detail(top_signal["detail"]) if top_signal else "no fresh signal in the last 30 days"
@@ -251,7 +297,7 @@ def _template_content(contact: dict, account: dict, top_signal: dict, play_key: 
 
     # --- LinkedIn InMail: short, same hypothesis, low-pressure ask ---
     inmail = (
-        f"Hi {greeting_name} — saw that {trigger_clause}. {implication} "
+        f"Hi {greeting_name} — {trigger_clause}. {implication} "
         f"Curious whether {frame['short_focus']} is on your radar — worth a quick look?"
     )
 
@@ -279,21 +325,37 @@ credible, specific hypothesis for why THIS person, at THIS already-warm account,
 THIS WEEK. Follow this process:
 
 1. Read the full account context (lifecycle stage, deal data if applicable, every signal listed, not \
-just the strongest one) and translate signals into what they actually imply about deal/account \
-momentum. Bad: "Saw your deal has been open a while." Good: "Saw Company's deal has sat in Proposal for \
-60 days with only one engaged contact — usually means the champion is trying to build a case alone."
-2. Map: signal -> what it implies about deal/account momentum -> this persona's specific priority -> the \
-TRACTIAN capability that addresses it. Use the persona hints provided rather than generic messaging — a \
-Plant Manager and a VP Operations at the same account should get different emails.
-3. Do not open with product features. Open with the account's specific situation: paragraph 1 is the \
-trigger + account context (stage, deal size if relevant), paragraph 2 is what it implies and why it \
-matters to this persona, paragraph 3 is the TRACTIAN value tied to that, then a low-friction question CTA.
+just the strongest one) and translate each signal into why it matters TO THE RECIPIENT — not what it \
+means for our pipeline. This copy goes directly to the customer; it is never a summary of our internal \
+deal analysis. Every signal below is marked REFERENCEABLE or NOT REFERENCEABLE — this is the most \
+important instruction in this prompt:
+   - REFERENCEABLE signals (their own product usage, their own contract, a public announcement) can be \
+named as something you observed: "Saw that Company recently expanded to a second facility."
+   - NOT REFERENCEABLE signals (a pricing-page visit, an ad click, third-party research, a LinkedIn role \
+change, competitor research, deal-stage/engagement-count data from our CRM) must NEVER be stated to the \
+recipient as an observed fact — that reads as surveillance, not insight, and would be a serious real-world \
+mistake. Instead, use the signal only to inform WHY you're reaching out now and WHAT to say, phrased as a \
+natural, generic reach-out reason that never reveals the tracking mechanism, our CRM terminology (deal \
+stage, engaged-contact count, lifecycle stage, buying committee, champion), or an internal sales-process \
+concept. Bad (internal analyst voice, leaks CRM jargon and tracking): "Saw Company's deal has sat in \
+Proposal for 60 days with only one engaged contact — usually means the champion is trying to build a case \
+alone." Good (same underlying signal, customer-safe): "It's been a little while since we last connected, \
+and I wanted to check back in directly rather than let it sit."
+2. Map: signal -> why it matters to the recipient -> this persona's specific priority -> the TRACTIAN \
+capability that addresses it. Use the persona hints provided rather than generic messaging — a Plant \
+Manager and a VP Operations at the same account should get different emails.
+3. Do not open with product features. Open with the account's specific situation, respecting the \
+referenceable/not-referenceable rule above: paragraph 1 is the trigger (an observed fact for referenceable \
+signals, or a natural reach-out reason for non-referenceable ones) plus deal size if relevant, paragraph 2 \
+is why it matters to this persona, paragraph 3 is the TRACTIAN value tied to that, then a low-friction \
+question CTA.
 4. This is a warm nudge, not a cold pitch — write like you already have a relationship with this account, \
 not like you're introducing yourself for the first time. Avoid generic sales language unless grounded in \
 this account's specific context.
 5. Before finalizing, silently score your draft 1-10 on: specificity, business relevance, persona \
-alignment, TRACTIAN relevance, credibility of the hypothesis. If anything scores below 8, rewrite it. \
-Only output the final version — do not show your scoring.
+alignment, TRACTIAN relevance, credibility of the hypothesis, and — critically — whether a real person at \
+this company reading it would feel understood or surveilled. If anything scores below 8, rewrite it. Only \
+output the final version — do not show your scoring.
 
 Never invent a name you weren't given. If no contact name is provided, address them as "[Contact Name]" \
 literally. Always introduce/sign the rep as "[Your Name]" literally — never invent a rep name. These are \
@@ -324,9 +386,11 @@ def _anthropic_content(contact: dict, account: dict, top_signal: dict, play_key:
     frame = title_frame(contact["title"])
     ordered_signals = sorted(account.get("decayed_signals", []), key=lambda s: s["points_awarded"], reverse=True)
     signals_text = "\n".join(
-        f"- {SIGNAL_LIBRARY[s['signal_type']]['label']} ({s['detected_date']}, via {SIGNAL_LIBRARY[s['signal_type']]['source_tool']}): {s['detail']}"
+        f"- {SIGNAL_LIBRARY[s['signal_type']]['label']} "
+        f"({'REFERENCEABLE' if SIGNAL_CUSTOMER_REFERENCEABLE.get(s['signal_type']) else 'NOT REFERENCEABLE'}) "
+        f"({s['detected_date']}, via {SIGNAL_LIBRARY[s['signal_type']]['source_tool']}): {s['detail']}"
         for s in ordered_signals
-    ) or "- No fresh signal in the last 30 days."
+    ) or "- No fresh signal in the last 30 days. Use a natural, generic check-in reason — do not invent a signal."
     contact_line = (
         f"known contact named {contact['contact_name']}" if contact.get("contact_name")
         else 'no known contact yet — address them as "[Contact Name]"'

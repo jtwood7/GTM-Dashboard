@@ -266,10 +266,12 @@ PLAYS = {
         ),
         "connections_required": ["HubSpot", "Salesforce", "6sense", "Demandbase"],
         "launch_explainer": (
-            "Pushes every account in this group to a Meta ad audience and a HubSpot nurture sequence themed "
-            "around urgency and re-engagement. For accounts flagged single-threaded, it also auto-enrolls "
-            "any missing buying-committee contacts into a synchronized outreach wave."
+            "Pushes every account in this group into a HubSpot nurture sequence themed around urgency and "
+            "re-engagement — no paid ad spend here, this is a sales-led rescue, not an awareness play. For "
+            "accounts flagged single-threaded, it also auto-enrolls any missing buying-committee contacts "
+            "into a synchronized outreach wave."
         ),
+        "ads_involved": False,
     },
     "buying_committee_expanding": {
         "label": "Buying Committee Expanding",
@@ -277,6 +279,13 @@ PLAYS = {
         "angle": "engagement is broadening across the buying committee — capitalize on the momentum",
         "tactical_mix": ["Expanded ad audience", "Multi-thread intro email", "Introduction gift for newly engaged contacts"],
         "gifting_allowed": True,
+        "ads_involved": True,
+        "ad_angle": (
+            "The only play that spends on paid — the goal is awareness across a widening committee, not a "
+            "single conversion, so the creative stays broad (downtime cost, before/after reliability, "
+            "customer proof) rather than persona-specific. Same three creatives run for every account in "
+            "this group; see Ad Creative Performance in Reporting for which one's actually winning."
+        ),
         "how_signals_work": (
             "Ad Engagement Spike comes from RollWorks — how many distinct contacts at the account are "
             "engaging with running ABM ads. Pricing Page Revisit comes from Segment's first-party behavioral "
@@ -313,6 +322,7 @@ PLAYS = {
             "positioning the renewal conversation as an expansion conversation rather than a pure "
             "price negotiation."
         ),
+        "ads_involved": False,
     },
     "win_back_risk": {
         "label": "Win-Back Risk",
@@ -334,6 +344,7 @@ PLAYS = {
             "Pushes the group into personal outreach and a re-engagement email sequence. Gifting stays off "
             "until a contact shows an actual positive re-engagement signal first — never the opening move."
         ),
+        "ads_involved": False,
     },
 }
 PLAY_ORDER = ["velocity_rescue", "buying_committee_expanding", "renewal_expansion", "win_back_risk"]
