@@ -111,7 +111,7 @@ h3 { font-size: 15px; }
   padding: 20px 24px;
   margin-bottom: 24px;
 }
-.panel-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.panel-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .surface-slate { background: var(--slate-50); }  /* 30% secondary surface */
 
 /* ---------------- Run snapshot strip ---------------- */
@@ -284,11 +284,12 @@ tr.row-link:hover { background: var(--slate-50); }
   border: 1px solid var(--slate-200); border-radius: 10px; margin-bottom: 12px; overflow: hidden;
 }
 .stakeholder-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px; cursor: pointer; background: var(--white);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 10px; padding: 14px 18px; cursor: pointer; background: var(--white);
 }
 .stakeholder-header:hover { background: var(--slate-50); }
 .stakeholder-header .left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stakeholder-header .right-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .stakeholder-title { font-weight: 600; color: var(--slate-900); }
 .chevron { color: var(--slate-400); transition: transform 0.15s; }
 .stakeholder-card.expanded .chevron { transform: rotate(90deg); }
@@ -429,4 +430,23 @@ tr.row-link:hover { background: var(--slate-50); }
 .pill-top-creative {
   background: #DCFCE7; color: var(--green-600); font-size: 10.5px; font-weight: 600;
   padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+}
+
+/* ---------------- Mobile ---------------- */
+@media (max-width: 640px) {
+  .topbar {
+    flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px;
+  }
+  .topnav { flex-wrap: wrap; gap: 8px 16px; }
+  .wordmark span { display: block; font-size: 13px; }
+  .container { padding: 16px; }
+  .panel { padding: 16px; margin-bottom: 16px; }
+  h1 { font-size: 19px; }
+  h2 { font-size: 16px; }
+  .modal { padding: 16px; width: 100%; max-width: 94vw; }
+  .modal:has(.mermaid-container) { width: 100%; }
+  .gift-grid { grid-template-columns: 1fr; }
+  .inmail-bubble { max-width: 100%; }
+  table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  .ad-creative-row { flex-wrap: wrap; }
 }

@@ -26,7 +26,7 @@
       <span class="pill pill-cluster">{{ g.count }} account{{ 's' if g.count != 1 else '' }} ({{ g.pct_of_needing_action }}%)</span>
       <span class="muted" style="font-size:12px">{{ g.known_contacts_total }} known contact{{ 's' if g.known_contacts_total != 1 else '' }}</span>
     </div>
-    <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+    <div class="right-actions" onclick="event.stopPropagation()">
       <button class="btn btn-secondary btn-sm" data-play-explainer="{{ g.play }}">How does this play work?</button>
       <button class="btn btn-primary btn-sm" data-launch-play="{{ g.play }}" data-label="{{ g.label }}">Launch Play</button>
     </div>
