@@ -442,11 +442,15 @@ def generate_content(contact: dict, account: dict, top_signal: dict, play_key: s
     if anthropic_available():
         try:
             content = _anthropic_content(contact, account, top_signal, play_key, variant)
+            used_mode = "anthropic"
         except Exception as e:
             print(f"[content_generator] Anthropic call failed ({e}), falling back to template.")
             content = _template_content(contact, account, top_signal, play_key, variant)
+            used_mode = "template"
     else:
         content = _template_content(contact, account, top_signal, play_key, variant)
+        used_mode = "template"
     content["email_variant"] = variant_key
     content["simulated_replied"] = simulated_replied
+    content["content_mode"] = used_mode
     return content

@@ -129,6 +129,9 @@ COLUMN_MIGRATIONS = {
         ("simulated_impressions", "simulated_impressions INTEGER"),
         ("simulated_clicks", "simulated_clicks INTEGER"),
     ],
+    "contacts": [
+        ("content_mode", "content_mode TEXT"),
+    ],
 }
 
 

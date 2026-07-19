@@ -32,6 +32,7 @@ def _persist_content(contact_id: int, content: dict):
         "gift_tier_high": json.dumps(content["gift_tier_high"]),
         "email_variant": content["email_variant"],
         "simulated_replied": 1 if content["simulated_replied"] else 0,
+        "content_mode": content["content_mode"],
     })
 
 
