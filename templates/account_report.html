@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}{{ account.company_name }} — TRACTIAN Funnel Intelligence{% endblock %}
+{% block content %}
+
+<div class="breadcrumb"><a href="{{ url_for('dashboard') }}">Dashboard</a> / <a href="{{ url_for('plays_page') }}">Plays</a> / {{ account.company_name }}</div>
+
+<div class="panel">
+  <div class="report-header">
+    <div>
+      <h1>{{ account.company_name }}</h1>
+      <div class="meta">
+        <span>{{ account.industry }}</span>
+        <span class="muted">&middot;</span>
+        <span>{{ account.employee_count }} employees</span>
+        <span class="muted">&middot;</span>
+        <span>{{ account.plant_count }} plants</span>
+        <span class="muted">&middot;</span>
+        <span>{{ account.hq_city }}{% if account.hq_city %}, {% endif %}{{ account.hq_state }}</span>
+      </div>
+      <div class="meta">
+        {% if account.tier == 'Needs Action Now' %}<span class="pill pill-tier1">{{ account.tier }}</span>
+        {% elif account.tier == 'Monitor' %}<span class="pill pill-tier2">{{ account.tier }}</span>
+        {% else %}<span class="pill pill-tier3">{{ account.tier }}</span>{% endif %}
+        <span class="pill pill-mode">{{ account.lifecycle_stage }}</span>
+        <span class="pill pill-cluster">{{ play.label }}</span>
+        <span class="score-big">{{ account.total_score }}<span style="font-size:14px;color:var(--slate-400);font-weight:400;">/100</span></span>
+      </div>
+    </div>
+    <button class="btn btn-secondary" id="export-clay-btn" data-company="{{ account.company_name }}">Export to Outreach Tool</button>
+  </div>
+</div>
+
+{% if account.lifecycle_stage == 'Opportunity' %}
+<div class="panel">
+  <h2>Deal</h2>
+  <div class="settings-row">
+    <div class="field-group"><label>Deal Stage</label><span>{{ account.deal_stage }}</span></div>
+    <div class="field-group"><label>Amount</label><span>${{ '{:,.0f}'.format(account.deal_amount) }}</span></div>
+    <div class="field-group"><label>Target Close</label><span>{{ account.close_date }}</span></div>
+    <div class="field-group"><label>In Stage Since</label><span>{{ account.stage_entered_date }}</span></div>
+  </div>
+</div>
+{% endif %}
+
+{% if account.lifecycle_stage == 'Customer' %}
+<div class="panel">
+  <div class="panel-title-row">
+    <h2>Customer Health &amp; Usage</h2>
+    {% if account.health_gate_passed %}<span class="pill pill-known">Passes Health Gate &#10003;</span>
+    {% else %}<span class="pill pill-tier3" style="background:#FEE2E2;color:var(--red-600)">Fails Health Gate</span>{% endif %}
+  </div>
+  <div class="settings-row">
+    <div class="field-group"><label>Active User Ratio <button class="info-icon" data-metric-info="active_user_ratio">&#9432;</button></label><span>{{ (account.active_user_ratio * 100)|round(0)|int }}%</span></div>
+    <div class="field-group"><label>Alert&rarr;Work Order Rate <button class="info-icon" data-metric-info="alert_to_workorder_rate">&#9432;</button></label><span>{{ (account.alert_to_workorder_rate * 100)|round(0)|int }}%</span></div>
+    <div class="field-group"><label>Days Since Last Login <button class="info-icon" data-metric-info="days_since_last_login">&#9432;</button></label><span>{{ account.days_since_last_login }}</span></div>
+    <div class="field-group"><label>Plants Live <button class="info-icon" data-metric-info="plants_live">&#9432;</button></label><span>{{ account.plants_live }} / {{ account.plant_count }}</span></div>
+    <div class="field-group"><label>Sensors <button class="info-icon" data-metric-info="sensors">&#9432;</button></label><span>{{ account.sensors_deployed }} / {{ account.sensors_contracted }} contracted</span></div>
+    <div class="field-group"><label>Renewal <button class="info-icon" data-metric-info="renewal">&#9432;</button></label><span>{{ account.renewal_date }}</span></div>
+  </div>
+  {% if not account.health_gate_passed %}
+  <p class="muted" style="font-size:12px;margin-top:10px">
+    Health gate failed &mdash; this account is force-routed to Win-Back Risk regardless of usage signals.
+    Best practice: fix adoption before proposing expansion.
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-title-row">
+    <h2>Campaign Actions</h2>
+    <span class="muted" style="font-size:12px">{{ known_contacts }} known contact{{ 's' if known_contacts != 1 else '' }} eligible for email-matched sync</span>
+  </div>
+  <p class="muted" style="font-size:11.5px;margin-top:-6px;margin-bottom:12px">Not connected to Meta or HubSpot &mdash; these log the action. Click a flow icon to see the real integration path.</p>
+  <div class="campaign-actions-row">
+    {% for sync_type, sync_label in sync_labels.items() %}
+    {% set sync = syncs[sync_type] %}
+    <div class="campaign-action">
+      <div class="campaign-action-label">{{ sync_label }} <button class="flow-link" data-flow="{{ 'meta_audience' if sync_type == 'meta_audience' else 'hubspot_nurture' }}" title="See the real integration flow">&#9881;</button></div>
+      {% if sync %}
+      <div class="sync-status">
+        <span class="pill pill-known">Synced &#10003;</span>
+        <span class="muted" style="font-size:12px">{{ sync.contact_count }} contact{{ 's' if sync.contact_count != 1 else '' }} &middot; {{ sync.synced_at[:10] }} &middot; {{ sync.triggered_by|capitalize }}</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" data-sync="{{ sync_type }}" data-account-id="{{ account.id }}" data-company="{{ account.company_name }}">Re-sync</button>
+      {% else %}
+      <button class="btn btn-secondary" data-sync="{{ sync_type }}" data-account-id="{{ account.id }}" data-company="{{ account.company_name }}">{{ 'Sync to Ad Audience' if sync_type == 'meta_audience' else 'Enroll in Nurture' }}</button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Score Breakdown</h2>
+  <div class="settings-row">
+    <div class="field-group"><label>{{ 'Expansion Opportunity' if account.lifecycle_stage == 'Customer' else 'Stage Risk' }}</label><span>{{ account.stage_risk_or_expansion }} / 40</span></div>
+    <div class="field-group"><label>Threading Health</label><span>{{ account.threading_health }} / 20</span></div>
+    <div class="field-group"><label>Signal Urgency</label><span>{{ account.signal_urgency }} / 40 <span class="muted">(sum of Points Attributed below)</span></span></div>
+    <div class="field-group"><label>Total</label><span><strong>{{ account.total_score }} / 100</strong></span></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Evidence</h2>
+  {% if signals %}
+  <table class="evidence-table">
+    <thead>
+      <tr><th>Signal</th><th>Detail</th><th>Source</th><th>Date</th><th>Points Attributed</th></tr>
+    </thead>
+    <tbody>
+      {% for s in signals %}
+      <tr>
+        <td><strong>{{ s.label }}</strong></td>
+        <td>{{ s.detail }}</td>
+        <td><span class="muted">{{ s.source_tool }}</span></td>
+        <td>{{ s.detected_date }}</td>
+        <td>{{ s.points_awarded }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:8px">Points Attributed is each signal's share of the 40-point Signal Urgency above (after recency decay) — the column sums to {{ account.signal_urgency }}. Source is internal CRM/platform data, not a public page — nothing to link out to.</p>
+  {% else %}
+  <div class="empty-state">No fresh signal in the last 30 days for this account.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Contacts</h2>
+  {% if grouped_contacts %}
+    {% for area_key, group in grouped_contacts.items() %}
+    <h3 style="margin-top:20px;color:var(--slate-500);text-transform:uppercase;font-size:12px;letter-spacing:0.04em;">{{ group.label }}</h3>
+    {% for c in group.contacts %}
+    <div class="stakeholder-card" id="contact-{{ c.id }}">
+      <div class="stakeholder-header" onclick="toggleStakeholder({{ c.id }})">
+        <div class="left">
+          <span class="chevron">&#9656;</span>
+          <span class="stakeholder-title">{{ c.title }}</span>
+          {% if c.is_known_contact %}
+            <span class="pill pill-known">{{ c.contact_name }}</span>
+            <span class="muted" style="font-size:12px">{{ c.contact_email }}</span>
+            <a href="https://{{ c.linkedin_url }}" target="_blank" onclick="event.stopPropagation()" title="LinkedIn">&#128279;</a>
+          {% else %}
+            <span class="pill pill-unknown">Search on Clay / LinkedIn</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="stakeholder-body">
+        {% if not c.email_body %}
+        <div class="content-block"><span class="muted">No content generated yet for this contact — it'll appear once this account is picked up in a sprint.</span></div>
+        {% else %}
+        <div class="content-block email">
+          <div class="block-label"><span class="name">Email Draft</span><span class="pill pill-ai">AI-drafted</span></div>
+          <div class="email-subject">{{ c.email_subject }}</div>
+          <div class="copy-block" id="email-body-{{ c.id }}">{{ c.email_body }}</div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="copyBlock('email-body-{{ c.id }}', this)">Copy</button>
+        </div>
+
+        <div class="content-block call-script">
+          <div class="block-label"><span class="name">Call Script</span><span class="pill pill-ai">AI-drafted</span></div>
+          <div class="call-intro">&ldquo;{{ c.call_script_intro }}&rdquo;</div>
+          <ul class="call-notes">
+            {% for note in c.call_script_notes %}
+            <li>{{ note|bold_md }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="content-block inmail">
+          <div class="block-label"><span class="name">LinkedIn InMail</span><span class="pill pill-ai">AI-drafted</span></div>
+          <div class="inmail-bubble">{{ c.linkedin_inmail }}</div>
+        </div>
+
+        <div class="content-block gifts">
+          <div class="block-label"><span class="name">Gift Ideas</span><span class="pill pill-ai">AI-drafted</span></div>
+          <p class="muted" style="font-size:11.5px;margin-top:-4px;margin-bottom:8px">
+            {% if c.gift_eligible %}<span style="color:var(--green-600);font-weight:600">Eligible to send &mdash;</span>{% else %}<span style="color:var(--slate-500);font-weight:600">Not eligible &mdash;</span>{% endif %}
+            {{ c.gift_reason }}
+          </p>
+          <div class="gift-grid">
+            {% for tier, tier_key in [('<$35','gift_tier_low'), ('$36–$85','gift_tier_mid'), ('$86–$150','gift_tier_high')] %}
+            {% set gift = c[tier_key] %}
+            <div class="gift-card">
+              <span class="gift-tier-label">{{ tier }}</span>
+              <span class="gift-name">{{ gift.gift_name }}</span>
+              <span class="gift-justification">{{ gift.justification }}</span>
+              <button class="btn btn-secondary btn-sm" style="margin-top:6px" {% if not c.gift_eligible %}disabled{% endif %}
+                      data-send-gift data-contact-id="{{ c.id }}" data-gift-tier="{{ tier }}" data-gift-name="{{ gift.gift_name }}">Send This Gift</button>
+            </div>
+            {% endfor %}
+          </div>
+          <button class="flow-link" data-flow="gift" style="margin-top:8px">&#9881; See the real gifting flow</button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+  {% else %}
+  <div class="empty-state">No contacts generated for this account.</div>
+  {% endif %}
+</div>
+
+<div id="modal-container"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleStakeholder(id) {
+  document.getElementById('contact-' + id).classList.toggle('expanded');
+}
+document.getElementById('export-clay-btn').addEventListener('click', function() {
+  openClayModal(this.dataset.company);
+});
+document.querySelectorAll('[data-sync]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const syncType = this.dataset.sync;
+    const company = this.dataset.company;
+    fetch(`/api/account/${this.dataset.accountId}/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sync_type: syncType }),
+    })
+      .then((r) => r.json())
+      .then((data) => openSyncModal(syncType, company, data.contact_count));
+  });
+});
+document.querySelectorAll('[data-send-gift]').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const contactId = this.dataset.contactId;
+    const giftTier = this.dataset.giftTier;
+    const giftName = this.dataset.giftName;
+    fetch(`/api/contact/${contactId}/gift`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gift_tier: giftTier, gift_name: giftName, play: '{{ account.play }}' }),
+    })
+      .then((r) => r.json())
+      .then(() => openFlowModal('gift'));
+  });
+});
+document.querySelectorAll('[data-flow]').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    openFlowModal(this.dataset.flow);
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Sprint #{{ sprint.id }} — TRACTIAN Funnel Intelligence{% endblock %}
+{% block content %}
+
+<div class="breadcrumb"><a href="{{ url_for('dashboard') }}">Dashboard</a> / Sprint #{{ sprint.id }}</div>
+
+<div class="panel">
+  <h2>Sprint #{{ sprint.id }}</h2>
+  <div class="settings-row">
+    <div class="field-group"><label>Trigger</label><span>{{ 'Scheduled' if sprint.trigger_type == 'scheduled' else 'Manual' }}</span></div>
+    <div class="field-group"><label>Started</label><span>{{ sprint.started_at[:19].replace('T', ' ') }}</span></div>
+    <div class="field-group"><label>Accounts Needing Action</label><span>{{ sprint.accounts_needing_action }}</span></div>
+    <div class="field-group"><label>Content Mode</label><span class="pill pill-mode">{{ sprint.content_mode }}</span></div>
+  </div>
+  {% if sprint.status == 'failed' %}
+  <div class="panel surface-slate" style="margin-top:14px;margin-bottom:0;border-color:var(--red-500)">
+    <strong style="color:var(--red-600)">This sprint failed:</strong>
+    <span style="color:var(--slate-700)">{{ sprint.error or 'No error message recorded.' }}</span>
+  </div>
+  {% endif %}
+  <p class="muted" style="margin-top:14px;font-size:13px">
+    Accounts don't get a per-sprint snapshot — the book is persistent and mutates in place, so
+    <a href="{{ url_for('plays_page') }}">Plays</a> always shows who needs action right now, not a
+    point-in-time list from this specific sprint.
+  </p>
+</div>
+
+{% endblock %}

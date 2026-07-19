@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Reporting — TRACTIAN Funnel Intelligence{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <div class="panel-title-row">
+    <h1 style="margin-bottom:4px">Reporting</h1>
+    <div class="field-group" style="margin:0">
+      <label for="play-filter" style="font-size:11px">Filter by play</label>
+      <select id="play-filter">
+        <option value="all">All Plays</option>
+        {% for p in play_filters %}
+        <option value="{{ p.key }}">{{ p.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <p class="muted" style="font-size:12.5px">
+    Every named campaign launched from the Plays tab. Each play has a different objective, so the metric
+    that leads each campaign card is the one that actually proves that play worked — not a generic count.
+    Auto-fired syncs (the scheduler's quiet background enrollment) aren't named campaigns and don't show
+    up here.
+  </p>
+</div>
+
+{% if campaigns %}
+<div class="panel">
+  <h2 style="margin-bottom:10px">Key Findings</h2>
+  <div class="insights-grid">
+    <div>
+      <div class="snapshot-section-label" style="color:var(--red-600)">Needs Attention</div>
+      {% if insights.needs_attention %}
+      <ul class="insight-list insight-attention">
+        {% for msg in insights.needs_attention %}
+        <li>{{ msg }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted" style="font-size:12.5px">Nothing flagged right now.</p>
+      {% endif %}
+    </div>
+    <div>
+      <div class="snapshot-section-label" style="color:var(--green-600)">Highlights</div>
+      {% if insights.highlights %}
+      <ul class="insight-list insight-highlight">
+        {% for msg in insights.highlights %}
+        <li>{{ msg }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted" style="font-size:12.5px">Not enough volume yet to call out a highlight.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if not campaigns %}
+<div class="panel">
+  <div class="empty-state">No campaigns launched yet — go to Plays and click "Launch Play" to name and launch one.</div>
+</div>
+{% endif %}
+
+{% for c in campaigns %}
+<div class="panel campaign-card" data-play="{{ c.play }}">
+  <div class="report-header">
+    <div>
+      <h2 style="margin-bottom:4px">{{ c.campaign_name }}</h2>
+      <p style="font-size:13px;color:var(--slate-600);margin:0">
+        <span class="pill pill-cluster">{{ c.play_label }}</span>
+        <span class="muted" style="margin-left:6px">Launched {{ c.launched_at[:10] }} &middot; {{ c.account_count }} account{{ 's' if c.account_count != 1 else '' }}</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="primary-metric-tile">
+    <div class="primary-metric-label">{{ c.primary_metric.label }}</div>
+    <div class="primary-metric-value">{{ c.primary_metric.value }}</div>
+    {% if c.primary_metric.detail %}
+    <p class="muted" style="font-size:12px;margin:6px 0 0">{{ c.primary_metric.detail }}</p>
+    {% endif %}
+  </div>
+
+  <div class="metrics-grid" style="margin-top:14px">
+    <div class="metric-tile">
+      <div class="metric-value">{{ c.total_contact_syncs }}</div>
+      <div class="metric-label">Contacts Synced (Ads/Nurture)</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">{{ c.gift_count }}</div>
+      <div class="metric-label">Gifts Sent</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">{{ c.emails_sent }}</div>
+      <div class="metric-label">Emails Drafted/Sent</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">{{ c.email_replies }}</div>
+      <div class="metric-label">Simulated Replies</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">{{ c.reply_rate if c.reply_rate is not none else '—' }}{% if c.reply_rate is not none %}%{% endif %}</div>
+      <div class="metric-label">Reply Rate</div>
+    </div>
+  </div>
+
+  {% if c.email_variants %}
+  <div class="snapshot-section" style="margin-top:16px">
+    <div class="snapshot-section-label">CTA Variant Breakdown</div>
+    <table class="evidence-table">
+      <thead><tr><th>Variant</th><th>Sent</th><th>Replies</th><th>Reply Rate</th></tr></thead>
+      <tbody>
+        {% for key, v in c.email_variants.items() %}
+        <tr>
+          <td>{{ key }}</td>
+          <td>{{ v.n }}</td>
+          <td>{{ v.replies }}</td>
+          <td>{{ (100 * v.replies / v.n)|round(1) if v.n else '—' }}{% if v.n %}%{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if c.creative %}
+  <div class="snapshot-section" style="margin-top:16px">
+    <div class="snapshot-section-label">Ad Creative Performance</div>
+    <p class="muted" style="font-size:11.5px;margin:0 0 8px">
+      No real Meta connection exists in this demo, so there's no real creative thumbnail to pull back —
+      each mockup below stands in for what the actual ad image would be if Meta were connected.
+    </p>
+    {% for v in c.creative.variants %}
+    <div class="ad-creative-row">
+      <div class="ad-creative-mockup" style="background:{{ v.mockup_bg }}">{{ v.mockup_icon }}</div>
+      <div class="ad-creative-meta">
+        <div class="ad-creative-headline">
+          {{ v.label }}
+          {% if v.key == c.creative.top.key %}<span class="pill-top-creative">Top performer</span>{% endif %}
+        </div>
+        <div class="ad-creative-caption">&ldquo;{{ v.headline }}&rdquo; &mdash; {{ v.format }}</div>
+        <div class="ad-creative-stats">{{ '{:,}'.format(v.impressions) }} impressions &middot; {{ '{:,}'.format(v.clicks) }} clicks &middot; {{ v.ctr }}% CTR</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('play-filter').addEventListener('change', function() {
+  const val = this.value;
+  document.querySelectorAll('.campaign-card').forEach(function(card) {
+    card.style.display = (val === 'all' || card.dataset.play === val) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

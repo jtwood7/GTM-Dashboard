@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Conceptual Plays — TRACTIAN Funnel Intelligence{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h1 style="margin-bottom:4px">Conceptual Plays</h1>
+  <p class="muted" style="font-size:12.5px">
+    Not live, not running on the active book. These are plays that need infrastructure this demo doesn't
+    model &mdash; calendar data, video-conferencing attendance, live shared documents &mdash; so instead of
+    faking that data, each one below shows a single hand-written example output paired with the real
+    integration flow it would follow if it were connected.
+  </p>
+</div>
+
+<div class="panel">
+  <div class="panel-title-row">
+    <h2>Where all ten ideas landed</h2>
+  </div>
+  <table class="evidence-table">
+    <thead><tr><th>Idea</th><th>Disposition</th></tr></thead>
+    <tbody>
+      {% for i in source_ideas %}
+      <tr>
+        <td><strong>{{ i.idea }}</strong></td>
+        <td style="color:var(--slate-600)">{{ i.disposition }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% for p in plays %}
+<div class="stakeholder-card" id="concept-{{ p.key }}">
+  <div class="stakeholder-header" onclick="toggleConceptCard('{{ p.key }}')">
+    <div class="left">
+      <span class="chevron">&#9656;</span>
+      <span class="stakeholder-title">{{ p.label }}</span>
+      <span class="pill pill-mode">Conceptual — not live</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+      <button class="flow-link" data-flow="{{ p.flow_key }}" title="See the real integration flow">&#9881; See the integration flow</button>
+    </div>
+  </div>
+  <div class="stakeholder-body">
+    <div class="content-block">
+      <div class="snapshot-section" style="margin-top:0">
+        <div class="snapshot-section-label">Trigger</div>
+        <p style="font-size:13.5px;color:var(--slate-700);margin:0 0 10px">{{ p.trigger }}</p>
+      </div>
+      <div class="snapshot-section">
+        <div class="snapshot-section-label">Why this stays conceptual</div>
+        <p style="font-size:13px;color:var(--slate-600);margin:0 0 14px">{{ p.why_conceptual }}</p>
+      </div>
+
+      <div class="snapshot-section" style="border-top:1px solid var(--slate-100);padding-top:14px">
+        <div class="snapshot-section-label">Example output &mdash; {{ p.example_account }}</div>
+        <p class="muted" style="font-size:12px;margin:0 0 12px">{{ p.example_meta }}</p>
+        {% for section in p.example_output %}
+        <div style="margin-bottom:14px">
+          <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin:0 0 4px">{{ section.heading }}</p>
+          {% if section.get('items') %}
+          <ul class="status-list" style="gap:5px">
+            {% for item in section.get('items') %}
+            <li style="padding-left:14px"><span class="status-dot status-live" style="top:6px"></span>{{ item }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p style="font-size:13px;color:var(--slate-700);white-space:pre-line;margin:0">{{ section.body }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleConceptCard(key) {
+  document.getElementById('concept-' + key).classList.toggle('expanded');
+}
+document.querySelectorAll('[data-flow]').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    openFlowModal(this.dataset.flow);
+  });
+});
+</script>
+{% endblock %}

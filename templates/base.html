@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TRACTIAN Funnel Intelligence{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    if (window.mermaid) {
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+    }
+  </script>
+</head>
+<body>
+  <div class="topbar">
+    <a href="{{ url_for('dashboard') }}" class="wordmark">TRACTIAN <span>Funnel Intelligence</span></a>
+    <nav class="topnav">
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('plays_page') }}">Plays</a>
+      <a href="{{ url_for('conceptual_plays_page') }}">Conceptual Plays</a>
+      <a href="{{ url_for('reporting_page') }}">Reporting</a>
+    </nav>
+  </div>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+
+  <div id="modal-root"></div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

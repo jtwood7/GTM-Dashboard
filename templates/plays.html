@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Plays — TRACTIAN Funnel Intelligence{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h1 style="margin-bottom:4px">Plays</h1>
+  <p class="muted" style="font-size:12.5px">
+    Four fixed buckets. Every account currently needing action falls into exactly one, based on which
+    signals are driving it — ties break toward the play listed first. Every account in a play gets the
+    same tactical mix; the actual messaging is customized per account by the signals that put it there.
+  </p>
+</div>
+
+{% if not groups %}
+<div class="panel">
+  <div class="empty-state">No accounts need action right now — run a sprint first, or check back after the book mutates.</div>
+</div>
+{% endif %}
+
+{% for g in groups %}
+<div class="stakeholder-card" id="play-{{ g.play }}">
+  <div class="stakeholder-header" onclick="togglePlayCard('{{ g.play }}')">
+    <div class="left">
+      <span class="chevron">&#9656;</span>
+      <span class="stakeholder-title">{{ g.label }}</span>
+      <span class="pill pill-cluster">{{ g.count }} account{{ 's' if g.count != 1 else '' }} ({{ g.pct_of_needing_action }}%)</span>
+      <span class="muted" style="font-size:12px">{{ g.known_contacts_total }} known contact{{ 's' if g.known_contacts_total != 1 else '' }}</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center" onclick="event.stopPropagation()">
+      <button class="btn btn-secondary btn-sm" data-play-explainer="{{ g.play }}">How does this play work?</button>
+      <button class="btn btn-primary btn-sm" data-launch-play="{{ g.play }}" data-label="{{ g.label }}">Launch Play</button>
+    </div>
+  </div>
+  <div class="stakeholder-body">
+    <div class="content-block">
+      <p style="font-size:13.5px;color:var(--slate-600);margin:0 0 14px">{{ g.angle }}.</p>
+      <div class="campaign-detail-grid" style="margin-top:0;padding-top:0;border-top:none">
+        <div class="snapshot-section" style="margin-top:0">
+          <div class="snapshot-section-label">Tactical Mix (fixed for this play)</div>
+          <ul class="status-list" style="gap:5px">
+            {% for tactic in g.tactical_mix %}
+            <li style="padding-left:14px"><span class="status-dot status-live" style="top:6px"></span>{{ tactic }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="snapshot-section" style="margin-top:0">
+          <div class="snapshot-section-label">Gifting</div>
+          <p style="font-size:13px;color:var(--slate-700);margin:0">
+            {% if g.gifting_allowed %}Allowed for this play, gated per-contact by recent engagement and the frequency cap — see each account's Campaign Actions.{% else %}Not used for this play &mdash; see &ldquo;How does this play work?&rdquo; above.{% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="snapshot-section" style="margin-top:16px">
+        <div class="snapshot-section-label">Target Accounts ({{ g.accounts|length }})</div>
+        <table class="evidence-table">
+          <thead><tr><th>Company</th><th>Stage</th><th>Score</th><th>Known Contacts</th></tr></thead>
+          <tbody>
+            {% for a in g.accounts %}
+            <tr class="row-link" onclick="window.location.href='{{ url_for('account_report', account_id=a.id) }}'">
+              <td><strong>{{ a.company_name }}</strong></td>
+              <td><span class="pill pill-mode">{{ a.lifecycle_stage }}</span></td>
+              <td>{{ a.total_score }}</td>
+              <td>{{ a.known_contacts }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="play-explainer-{{ g.play }}" style="display:none">
+  <h3>{{ g.label }}</h3>
+  <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin-bottom:4px">How the signals are generated</p>
+  <p>{{ g.how_signals_work }}</p>
+  <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin-bottom:4px;margin-top:14px">Connections required</p>
+  <p>{{ g.connections_required|join(', ') }} &mdash; none of these are actually connected in this demo.</p>
+  <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin-bottom:4px;margin-top:14px">What launching this play enables</p>
+  <p>{{ g.launch_explainer }}</p>
+  <div class="modal-actions">
+    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePlayCard(playKey) {
+  document.getElementById('play-' + playKey).classList.toggle('expanded');
+}
+document.querySelectorAll('[data-launch-play]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openLaunchPlayModal(this.dataset.launchPlay, this.dataset.label);
+  });
+});
+
+function openLaunchPlayModal(playKey, label) {
+  const today = new Date().toISOString().slice(0, 10);
+  const defaultName = `${label} — ${today}`;
+  showModal(`
+    <h3>Launch ${escapeHtml(label)}</h3>
+    <p>Name this campaign so its performance shows up in Reporting.</p>
+    <input type="text" id="campaign-name-input" value="${escapeHtml(defaultName)}"
+           style="width:100%;padding:9px;border:1px solid var(--slate-300);border-radius:8px;font-family:inherit;font-size:13.5px;">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="confirm-launch-btn">Launch</button>
+    </div>
+  `);
+  document.getElementById('confirm-launch-btn').addEventListener('click', function() {
+    confirmLaunchPlay(playKey, label);
+  });
+}
+
+function confirmLaunchPlay(playKey, label) {
+  const input = document.getElementById('campaign-name-input');
+  const campaignName = (input.value || '').trim() || label;
+  document.getElementById('confirm-launch-btn').disabled = true;
+  fetch(`/api/plays/${playKey}/launch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ campaign_name: campaignName }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      showModal(`
+        <h3>${escapeHtml(campaignName)} launched</h3>
+        <p>Synced ${data.synced_accounts} account${data.synced_accounts === 1 ? '' : 's'} to the ad audience
+        and nurture sequence (${data.synced_pairs} total sync actions) under this campaign name — track its
+        performance in Reporting.</p>
+        <p class="muted" style="margin-top:10px">No real sync happens in this demo.</p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal(); window.location.reload();">Close</button>
+        </div>
+      `);
+    });
+}
+</script>
+{% endblock %}

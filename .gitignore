@@ -1,0 +1,5 @@
+venv/
+__pycache__/
+*.pyc
+tractian_funnel.db
+.DS_Store

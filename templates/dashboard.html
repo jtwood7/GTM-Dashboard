@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TRACTIAN Funnel Intelligence{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h2>Growth Metrics</h2>
+  <div class="metrics-grid">
+    <div class="metric-tile">
+      <div class="metric-value">{{ metrics.needing_action_count }}</div>
+      <div class="metric-label">Accounts Needing Action Now</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">${{ '{:,.0f}'.format(metrics.pipeline_value_in_motion) }}</div>
+      <div class="metric-label">Opportunity Pipeline In Motion</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">{{ metrics.customer_health_rate if metrics.customer_health_rate is not none else '—' }}{% if metrics.customer_health_rate is not none %}%{% endif %}</div>
+      <div class="metric-label">Customers Passing Health Gate</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">{{ metrics.accounts_in_campaign }}</div>
+      <div class="metric-label">Accounts in Active Campaign</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-value">{{ metrics.avg_days_in_stage if metrics.avg_days_in_stage is not none else '—' }}{% if metrics.avg_days_in_stage is not none %}<span style="font-size:14px">d</span>{% endif %}</div>
+      <div class="metric-label">Avg Days in Stage (MOFU)</div>
+    </div>
+  </div>
+  <p class="muted" style="font-size:11px;margin-top:12px">
+    Opportunity Pipeline In Motion sums each Opportunity-stage account's own deal_amount field — a real
+    per-account figure, not an estimate applied after the fact. {{ metrics.customer_count }} total customers
+    in the book.
+  </p>
+</div>
+
+{% if play_teaser %}
+<div class="panel">
+  <div class="panel-title-row">
+    <h2>Play Opportunities</h2>
+    <a href="{{ url_for('plays_page') }}" style="font-size:13px;font-weight:600">View all &rarr;</a>
+  </div>
+  <div class="campaign-actions-row">
+    {% for g in play_teaser %}
+    <div class="campaign-action" style="cursor:pointer" onclick="window.location.href='{{ url_for('plays_page') }}'">
+      <div class="campaign-action-label">{{ g.label }}</div>
+      <div class="muted" style="font-size:12.5px">{{ g.count }} account{{ 's' if g.count != 1 else '' }} needing action ({{ g.pct_of_needing_action }}%)</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-title-row">
+    <h2>Settings</h2>
+    <button class="btn btn-primary" id="run-sprint-btn">Run Sprint Now</button>
+  </div>
+  <div class="settings-row">
+    <div class="field-group">
+      <label>Auto-run sprints</label>
+      <label class="toggle">
+        <input type="checkbox" id="auto-sprint-toggle" {% if settings.sprint_auto_enabled == 'true' %}checked{% endif %}>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="field-group">
+      <label>Cadence (days)</label>
+      <input type="number" id="sprint-cadence-input" min="1" max="60" value="{{ settings.sprint_cadence_days }}">
+    </div>
+    <div class="field-group">
+      <label>&nbsp;</label>
+      <span class="muted" id="settings-saved-note"></span>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:10px;font-size:12.5px">
+    When on, every {{ settings.sprint_cadence_days }} days this mutates the active book (stage advances,
+    fresh signals), re-scores everyone, and auto-syncs any newly-qualified account to its play's channels
+    — the full loop, not just a re-score.
+  </p>
+</div>
+
+<div class="panel">
+  <div class="panel-title-row">
+    <h2>Sprint History</h2>
+  </div>
+  {% if sprints %}
+  <table>
+    <thead>
+      <tr><th>Started</th><th>Trigger</th><th>Accounts Needing Action</th><th>Status</th></tr>
+    </thead>
+    <tbody id="sprint-history-body">
+      {% for s in sprints %}
+      <tr class="row-link" onclick="window.location.href='{{ url_for('sprint_detail', sprint_id=s.id) }}'">
+        <td>{{ s.started_at[:19].replace('T', ' ') }}</td>
+        <td>{{ 'Scheduled' if s.trigger_type == 'scheduled' else 'Manual' }}</td>
+        <td>{{ s.accounts_needing_action }}</td>
+        <td>
+          <span class="status-{{ s.status }}">{{ s.status|capitalize }}{% if s.status == 'running' %} <span class="spinner"></span>{% endif %}</span>
+          {% if s.status == 'failed' and s.error %}
+          <div class="muted" style="font-size:11px;color:var(--red-600);max-width:220px;white-space:normal">{{ s.error }}</div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No sprints yet. Click "Run Sprint Now" to score the active book for the first time.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>window.__hasRunningSprint = {{ 'true' if sprints and sprints[0].status == 'running' else 'false' }};</script>
+{% endblock %}
