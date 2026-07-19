@@ -1,3 +1,4 @@
+import os
 import re
 import threading
 from datetime import datetime
@@ -218,5 +219,6 @@ if __name__ == "__main__":
         print("[startup] ANTHROPIC_API_KEY detected — content generation mode: Anthropic API")
     else:
         print("[startup] No ANTHROPIC_API_KEY set — content generation mode: templated fallback")
-    print("[startup] TRACTIAN Funnel Intelligence Dashboard running at http://127.0.0.1:5051")
-    app.run(host="127.0.0.1", port=5051, debug=False)
+    port = int(os.environ.get("PORT", 5051))
+    print(f"[startup] TRACTIAN Funnel Intelligence Dashboard running on port {port}")
+    app.run(host="0.0.0.0", port=port, debug=False)
