@@ -13,6 +13,9 @@ from pipeline.knowledge_base import (
     PLAY_ORDER,
     PLAYS,
     SIGNAL_LIBRARY,
+    STAGE_SCOPE_ANY,
+    STAGE_SCOPE_CUSTOMER,
+    STAGE_SCOPE_OPPORTUNITY,
     action_tier_for_score,
     decay_multiplier,
     passes_health_gate,
@@ -28,6 +31,23 @@ from pipeline.knowledge_base import (
 # normalization step happening behind the scenes.
 SIGNAL_URGENCY_NORMALIZE_DIVISOR = 2.5
 SIGNAL_URGENCY_MAX = 40
+
+
+def _signal_applies_to_current_stage(signal_type: str, lifecycle_stage: str) -> bool:
+    """Signals are generated once and are append-only (see db.py), but an
+    account's lifecycle_stage can advance in a later sprint — a Deal Stalled
+    In Stage signal from when an account was an Opportunity shouldn't keep
+    scoring (or driving messaging) once that account is a Customer. Filtered
+    here at scoring time rather than deleted, so the evidence trail stays
+    intact; it just stops counting once it no longer applies."""
+    scope = SIGNAL_LIBRARY[signal_type]["stage_scope"]
+    if scope == STAGE_SCOPE_ANY:
+        return True
+    if scope == STAGE_SCOPE_OPPORTUNITY:
+        return lifecycle_stage == "Opportunity"
+    if scope == STAGE_SCOPE_CUSTOMER:
+        return lifecycle_stage == "Customer"
+    return True
 
 
 def apply_recency_decay(signal_type: str, detected_date: str, today: datetime) -> float:
@@ -84,6 +104,8 @@ def score_account(account: dict, raw_signals: list, engaged_contact_count: int, 
     """
     decayed_signals = []
     for sig in raw_signals:
+        if not _signal_applies_to_current_stage(sig["signal_type"], account["lifecycle_stage"]):
+            continue
         points = apply_recency_decay(sig["signal_type"], sig["detected_date"], today)
         if points <= 0:
             continue
