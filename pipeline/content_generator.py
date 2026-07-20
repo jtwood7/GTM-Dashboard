@@ -172,11 +172,13 @@ NO_SIGNAL_HOOK = "it's been a bit since there was any fresh activity here, and I
 
 
 def _deal_context_clause(account: dict) -> str:
-    """Extra account-specific texture for Opportunity-stage accounts — the
-    dollar figure only, not our internal deal-stage taxonomy (a customer
-    doesn't think of themselves as being "in Technical Validation")."""
-    if account["lifecycle_stage"] == "Opportunity" and account.get("deal_amount"):
-        return f" (a ${account['deal_amount']:,.0f} opportunity currently in motion)"
+    """Deliberately empty for customer-facing copy. Our internal pipeline
+    figures — the deal's dollar amount, its stage in our CRM — must never
+    appear in an email to the prospect: they don't think of themselves as
+    "a $503,000 opportunity currently in motion," and stating it reads as
+    internal deal-desk language leaking out. The deal amount stays available
+    to the rep (call-script notes, the account page) but never in the copy
+    that gets sent. Kept as a function so the assembly sites don't change."""
     return ""
 
 

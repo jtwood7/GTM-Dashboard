@@ -9,6 +9,7 @@ from markupsafe import Markup, escape
 import db
 import scheduler
 from pipeline import audience_sync, content_generator, gifting, growth_metrics
+from pipeline.account_brief import ACCOUNT_BRIEF_DEMO, build_account_brief
 from pipeline.flow_diagrams import get_flow
 from pipeline.knowledge_base import (
     ACTION_TIER_1_LABEL,
@@ -91,11 +92,12 @@ def account_report(account_id):
     known_contacts = sum(1 for c in contacts if c["is_known_contact"])
     syncs = {st: db.latest_sync(account["company_name"], st) for st in audience_sync.SYNC_TYPES}
     play = PLAYS[account["play"]]
+    brief = build_account_brief(account, known_contacts)
 
     return render_template(
         "account_report.html", account=account, signals=signals, grouped_contacts=grouped,
         known_contacts=known_contacts, syncs=syncs, sync_labels=audience_sync.SYNC_TYPES,
-        play=play, gift_tiers=GIFT_TIERS,
+        play=play, gift_tiers=GIFT_TIERS, brief=brief, brief_demo=ACCOUNT_BRIEF_DEMO,
     )
 
 

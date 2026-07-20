@@ -55,6 +55,15 @@ FLOW_DIAGRAMS = {
     D --> E[Claude drafts intro content for each new contact]
     E --> F[Synchronized outreach wave scheduled across contacts]""",
     },
+    "account_brief": {
+        "title": "How account-brief generation + drafting would actually work",
+        "mermaid": """flowchart TD
+    A[Account flagged for a play that calls for an overview asset] --> B[Assemble tailored brief content from account industry, footprint, and driving signals]
+    B --> C[Canva Connect API renders it into a branded one-pager PDF]
+    C --> D[For each known contact: pull their persona-tailored email]
+    D --> E[Gmail API creates a draft per contact, asset linked, ready to send]
+    E --> F[Rep reviews and sends; logged back to HubSpot as an activity]""",
+    },
     "meeting_prep": {
         "title": "How an auto-generated meeting prep brief would actually work",
         "mermaid": """flowchart TD
