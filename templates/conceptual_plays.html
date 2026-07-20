@@ -7,8 +7,7 @@
   <p class="muted" style="font-size:12.5px">
     Not live, not running on the active book. These are plays that need infrastructure this demo doesn't
     model &mdash; calendar data, video-conferencing attendance, live shared documents &mdash; so instead of
-    faking that data, each one below shows a single hand-written example output paired with the real
-    integration flow it would follow if it were connected.
+    faking that data, each one below shows a single example of what it would produce.
   </p>
 </div>
 
@@ -36,9 +35,6 @@
       <span class="chevron">&#9656;</span>
       <span class="stakeholder-title">{{ p.label }}</span>
       <span class="pill pill-mode">Conceptual — not live</span>
-    </div>
-    <div class="right-actions" onclick="event.stopPropagation()">
-      <button class="flow-link" data-flow="{{ p.flow_key }}" title="See the real integration flow">&#9881; See the integration flow</button>
     </div>
   </div>
   <div class="stakeholder-body">
@@ -82,11 +78,5 @@
 function toggleConceptCard(key) {
   document.getElementById('concept-' + key).classList.toggle('expanded');
 }
-document.querySelectorAll('[data-flow]').forEach(function(btn) {
-  btn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    openFlowModal(this.dataset.flow);
-  });
-});
 </script>
 {% endblock %}

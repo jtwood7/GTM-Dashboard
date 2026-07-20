@@ -82,14 +82,10 @@ document.querySelectorAll('[data-play-explainer]').forEach(function(btn) {
 function openClayModal(companyName) {
   const company = escapeHtml(companyName || 'this account');
   showModal(`
-    <h3>Export to Outreach Tool</h3>
-    <p>This would create a row in a Clay table for every contact on this page and drop them
-    into your outreach sequence. Known contacts go in as-is, ready to sequence. For the ones
-    tagged &ldquo;Search on Clay / LinkedIn&rdquo; &mdash; where we only know the title, not the
-    person &mdash; Clay's enrichment would automatically find who currently holds that role at
-    ${company}, pull their contact info, and add them to the same sequence, no manual research
-    needed.</p>
-    <p class="muted" style="margin-top:10px">No real export happens in this demo.</p>
+    <h3>Exported to outreach</h3>
+    <p>Every contact on this page was pushed to the outreach sequence. Contacts we only know by
+    title get enriched to the person currently in that role at ${company} and added to the same
+    sequence.</p>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal()">Close</button>
     </div>
@@ -104,52 +100,21 @@ function openSyncModal(syncType, companyName, contactCount) {
   if (syncType === 'meta_audience') {
     title = 'Synced to Meta Custom Audience';
     body = n > 0
-      ? `This would upload ${n} known contact${plural}' hashed emails to a Meta Custom Audience
-         scoped to ${company}, ready to target with TRACTIAN ads. Unknown titles at this account
-         aren't email-matchable yet &mdash; Clay enrichment (see &ldquo;Export to Outreach
-         Tool&rdquo; above) would need to identify them first, or they'd need a company-level
-         LinkedIn Matched Audience instead, which doesn't require an individual email.`
-      : `${company} doesn't have any known contacts yet, so there's nothing to email-match into a
-         Meta Custom Audience. Run &ldquo;Export to Outreach Tool&rdquo; first to enrich the
-         unknown titles, or fall back to a company-level LinkedIn Matched Audience.`;
+      ? `${n} contact${plural} at ${company} synced to the ad audience.`
+      : `${company} has no known contacts to match yet — export to outreach first to enrich them.`;
   } else {
     title = 'Enrolled in HubSpot Nurture';
     body = n > 0
-      ? `This would add ${n} known contact${plural} at ${company} to a HubSpot nurture sequence
-         matched to this account's play, so follow-up emails stay consistent with the outreach
-         already drafted below.`
-      : `${company} doesn't have any known contacts yet, so there's nothing to enroll in a HubSpot
-         nurture sequence. Run &ldquo;Export to Outreach Tool&rdquo; first to enrich the unknown
-         titles.`;
+      ? `${n} contact${plural} at ${company} enrolled in the nurture sequence for this play.`
+      : `${company} has no known contacts to enroll yet — export to outreach first to enrich them.`;
   }
   showModal(`
     <h3>${title}</h3>
     <p>${body}</p>
-    <p class="muted" style="margin-top:10px">No real sync happens in this demo.</p>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal(); window.location.reload();">Close</button>
     </div>
   `);
-}
-
-// ---------------- technical flow diagrams (Mermaid) ----------------
-function openFlowModal(flowKey) {
-  fetch(`/api/flow-diagram/${flowKey}`)
-    .then((r) => r.json())
-    .then((data) => {
-      showModal(`
-        <h3>${escapeHtml(data.title)}</h3>
-        <div class="mermaid-container"><pre class="mermaid">${data.mermaid}</pre></div>
-        <p class="muted" style="margin-top:10px">This is the integration flow it would actually follow &mdash;
-        nothing real happens in this demo.</p>
-        <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="closeModal(); window.location.reload();">Close</button>
-        </div>
-      `);
-      if (window.mermaid) {
-        window.mermaid.run({ querySelector: '.mermaid-container .mermaid' });
-      }
-    });
 }
 
 // ---------------- copy button ----------------

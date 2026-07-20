@@ -1,38 +1,61 @@
-"""Account brief: the tailored, customer-facing one-pager content the system
-assembles for a specific account — the asset that would be rendered as a
-branded PDF via Canva and attached to the outreach drafts for that account's
-known contacts.
+"""Account brief: the tailored, TRACTIAN-branded one-pager the system builds
+for a specific account — the asset attached to that account's outreach.
 
-The content here is generated for real from the account's own fields
-(industry, plant footprint, the signals driving it). In this demo the render
-step (Canva Connect API) and the draft step (Gmail API) are represented by a
-flow diagram rather than called live from the deployed app — but the exact
-pipeline was run once for real against a real account; see ACCOUNT_BRIEF_DEMO
-below for the resulting Canva asset and the note about the real Gmail drafts.
+Content is assembled from the account's own fields (industry, footprint, the
+signals driving it) and always includes a real, industry-relevant TRACTIAN
+customer case study with a link. Rendered as a branded one-pager by the app
+(templates/onepager.html) and served per account.
 """
 from pipeline.messaging import INDUSTRY_CHALLENGE
 
-# A real asset + real drafts this pipeline actually produced, run once against
-# a real account (Ironclad Energy Partners, Oil & Gas, ~20 sites). The Canva
-# link is a real, rendered one-pager; the four drafts are real Gmail drafts,
-# one per known contact, each carrying that contact's tailored email plus this
-# asset. Surfaced in the UI as proof the pipeline produces real output, not a
-# mockup — kept as a static reference so it survives the demo DB resetting.
-ACCOUNT_BRIEF_DEMO = {
-    "account": "Ironclad Energy Partners",
-    "industry": "Oil & Gas",
-    "canva_view_url": "https://www.canva.com/d/3a8nbaC1TSamFRt",
-    "drafts_created": 4,
-    "draft_note": (
-        "Four real Gmail drafts were created — one per known contact "
-        "(Reliability Director, Reliability Engineer, Maintenance Manager, "
-        "Maintenance Planner) — each carrying that contact's tailored email "
-        "and a link to the asset above, ready to send."
-    ),
+# Real TRACTIAN customer case studies, mapped to the closest ICP industry.
+# Sourced from tractian.com/en/case-studies — real customers, real metrics,
+# real links, so the asset always cites relevant proof for the account.
+INDUSTRY_CASE_STUDY = {
+    "Automotive & Parts": {
+        "customer": "Pirelli",
+        "result": "identified 77 developing failures and recorded zero unplanned breakdowns on monitored systems",
+        "url": "https://tractian.com/en/case-studies/pirelli",
+    },
+    "Food & Beverage": {
+        "customer": "Ingredion",
+        "result": "avoided 168 hours of downtime and over $1M in production losses at a single plant",
+        "url": "https://tractian.com/en/case-studies/ingredion",
+    },
+    "Manufacturing (General)": {
+        "customer": "Whirlpool",
+        "result": "saved over $1M and reached 95% monitoring coverage on critical assets",
+        "url": "https://tractian.com/en/case-studies/whirlpool",
+    },
+    "Mining & Metals": {
+        "customer": "Höganäs",
+        "result": "boosted field performance across its metals operations with real-time digital asset access",
+        "url": "https://tractian.com/en/case-studies/hoganas",
+    },
+    "Chemicals": {
+        "customer": "ICL",
+        "result": "increased OEE by 41% and recovered 400+ tons of production",
+        "url": "https://tractian.com/en/case-studies/icl",
+    },
+    "Oil & Gas": {
+        "customer": "ICL",
+        "result": "increased OEE by 41% and recovered 400+ tons of production on process-critical rotating equipment",
+        "url": "https://tractian.com/en/case-studies/icl",
+    },
+    "Pulp & Paper": {
+        "customer": "ICL",
+        "result": "increased OEE by 41% and recovered 400+ tons of continuous-process production",
+        "url": "https://tractian.com/en/case-studies/icl",
+    },
+    "Consumer Goods": {
+        "customer": "Whirlpool",
+        "result": "saved over $1M and reached 95% monitoring coverage across its plants",
+        "url": "https://tractian.com/en/case-studies/whirlpool",
+    },
 }
+_DEFAULT_CASE_STUDY = INDUSTRY_CASE_STUDY["Manufacturing (General)"]
 
-# Industry-specific framing for the "challenge" and "why it fits" sections.
-# Falls back to a generic manufacturing line when an industry isn't listed.
+# How TRACTIAN fits each industry's specific reliability reality.
 _INDUSTRY_FIT = {
     "Oil & Gas": "remote, harsh-environment rotating assets that are expensive to inspect manually and carry real safety weight when they fail",
     "Automotive & Parts": "just-in-time lines where a single unplanned stop cascades through the whole supply chain",
@@ -43,6 +66,10 @@ _INDUSTRY_FIT = {
     "Consumer Goods": "high-mix production lines where frequent changeovers stress equipment unevenly",
     "Manufacturing (General)": "mixed equipment fleets where unplanned downtime tends to hit hardest and least predictably",
 }
+
+
+def case_study_for(industry: str) -> dict:
+    return INDUSTRY_CASE_STUDY.get(industry, _DEFAULT_CASE_STUDY)
 
 
 def _customer_industry(industry: str) -> str:
@@ -56,12 +83,12 @@ def build_account_brief(account: dict, known_contact_count: int = 0) -> dict:
     plants = account.get("plant_count") or 0
     challenge_tail = INDUSTRY_CHALLENGE.get(industry, "unplanned downtime tends to hit hardest across mixed equipment fleets")
     fit = _INDUSTRY_FIT.get(industry, _INDUSTRY_FIT["Manufacturing (General)"])
-
+    case = case_study_for(industry)
     footprint = f"across roughly {plants} facilities" if plants and plants > 1 else "across the operation"
 
     return {
         "title": f"TRACTIAN for {company}",
-        "subtitle": f"Condition intelligence tailored to {industry_lower}",
+        "subtitle": f"Condition intelligence for {industry_lower}",
         "sections": [
             {
                 "heading": "The challenge, as it looks at your sites",
@@ -75,22 +102,22 @@ def build_account_brief(account: dict, known_contact_count: int = 0) -> dict:
             {
                 "heading": "What TRACTIAN does",
                 "body": (
-                    "TRACTIAN puts continuous condition monitoring on your critical assets — vibration, "
-                    "temperature, and energy data per asset — paired with a modern CMMS and OEE analytics "
-                    "in one platform. Developing issues surface early enough to land on the planned "
-                    "schedule instead of as an emergency work order."
+                    "Continuous condition monitoring on your critical assets — vibration, temperature, and "
+                    "energy data per asset — paired with a modern CMMS and OEE analytics in one platform. "
+                    "Developing issues surface early enough to land on the planned schedule instead of as an "
+                    "emergency work order."
                 ),
             },
             {
                 "heading": f"Why it fits {industry_lower}",
                 "body": (
-                    f"Your environment means {fit}. TRACTIAN's sensors are built for it and deploy "
-                    "without pulling equipment offline, so coverage expands without adding site visits "
-                    "or downtime windows."
+                    f"Your environment means {fit}. TRACTIAN's sensors are built for it and deploy without "
+                    "pulling equipment offline, so coverage expands without adding site visits or downtime "
+                    "windows."
                 ),
             },
             {
-                "heading": "What the first 90 days look like",
+                "heading": "The first 90 days",
                 "body": (
                     "Weeks 1–2: sensors on the highest-criticality assets at a few priority sites, no "
                     "downtime required. Weeks 3–6: baseline set, the first developing-fault alerts start "
@@ -99,5 +126,6 @@ def build_account_brief(account: dict, known_contact_count: int = 0) -> dict:
                 ),
             },
         ],
+        "case_study": case,
         "known_contact_count": known_contact_count,
     }

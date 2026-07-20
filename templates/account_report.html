@@ -32,40 +32,13 @@
 
 <div class="panel">
   <div class="panel-title-row">
-    <h2>Account Brief &amp; Outreach</h2>
-    <button class="btn btn-primary" id="gen-brief-btn">Generate Account Brief &amp; Draft Outreach</button>
+    <h2>One-Pager &amp; Outreach</h2>
+    <a class="btn btn-primary" href="{{ url_for('account_onepager', account_id=account.id) }}" target="_blank" rel="noopener">Open One-Pager</a>
   </div>
   <p class="muted" style="font-size:12.5px;margin:0">
-    Assembles a one-pager tailored to {{ account.company_name }}'s industry and footprint, renders it as a
-    branded PDF via Canva, and drafts a persona-matched outreach email to each known contact via Gmail &mdash;
-    the asset attached, ready for the rep to send.
+    Branded one-pager tailored to {{ account.company_name }}, with the {{ brief.case_study.customer }} case study included &mdash;
+    and a persona-matched draft ready for each of the {{ known_contacts }} known contact{{ 's' if known_contacts != 1 else '' }} below.
   </p>
-</div>
-
-<div id="account-brief-content" style="display:none">
-  <h3>{{ brief.title }}</h3>
-  <p class="muted" style="font-size:12px;margin-bottom:12px">{{ brief.subtitle }} &mdash; generated from this account's industry, footprint, and the signals driving it.</p>
-  {% for s in brief.sections %}
-  <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin:12px 0 2px">{{ s.heading }}</p>
-  <p style="font-size:13px;color:var(--slate-600);margin:0;line-height:1.5">{{ s.body }}</p>
-  {% endfor %}
-
-  <div style="border-top:1px solid var(--slate-200);margin-top:16px;padding-top:14px">
-    <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin:0 0 4px">What generating this does</p>
-    <p style="font-size:12.5px;color:var(--slate-600);margin:0 0 10px;line-height:1.5">
-      Renders the brief above into a branded one-pager via the Canva Connect API, then drafts a persona-matched
-      email to each of this account's {{ brief.known_contact_count }} known contact{{ 's' if brief.known_contact_count != 1 else '' }} via the Gmail API &mdash; asset linked, ready to send.
-      <button class="flow-link" onclick="openFlowModal('account_brief')" style="margin-left:2px">&#9881; See the integration flow</button>
-    </p>
-    <div style="background:#e8f5ee;border:1px solid #b7e0c8;border-radius:8px;padding:11px 13px">
-      <p style="font-size:12px;color:var(--slate-700);margin:0;line-height:1.5">
-        <strong>Real example, not mocked:</strong> this exact pipeline was run once against {{ brief_demo.account }} ({{ brief_demo.industry }}).
-        <a href="{{ brief_demo.canva_view_url }}" target="_blank" rel="noopener">View the rendered one-pager &rarr;</a>
-        {{ brief_demo.draft_note }}
-      </p>
-    </div>
-  </div>
-  <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>
 </div>
 
 {% if account.lifecycle_stage == 'Opportunity' %}
@@ -109,12 +82,11 @@
     <h2>Campaign Actions</h2>
     <span class="muted" style="font-size:12px">{{ known_contacts }} known contact{{ 's' if known_contacts != 1 else '' }} eligible for email-matched sync</span>
   </div>
-  <p class="muted" style="font-size:11.5px;margin-top:-6px;margin-bottom:12px">Not connected to Meta or HubSpot &mdash; these log the action. Click a flow icon to see the real integration path.</p>
   <div class="campaign-actions-row">
     {% for sync_type, sync_label in sync_labels.items() %}
     {% set sync = syncs[sync_type] %}
     <div class="campaign-action">
-      <div class="campaign-action-label">{{ sync_label }} <button class="flow-link" data-flow="{{ 'meta_audience' if sync_type == 'meta_audience' else 'hubspot_nurture' }}" title="See the real integration flow">&#9881;</button></div>
+      <div class="campaign-action-label">{{ sync_label }}</div>
       {% if sync %}
       <div class="sync-status">
         <span class="pill pill-known">Synced &#10003;</span>
@@ -228,7 +200,6 @@
             </div>
             {% endfor %}
           </div>
-          <button class="flow-link" data-flow="gift" style="margin-top:8px">&#9881; See the real gifting flow</button>
         </div>
         {% endif %}
       </div>
@@ -252,9 +223,6 @@ function toggleStakeholder(id) {
 document.getElementById('export-clay-btn').addEventListener('click', function() {
   openClayModal(this.dataset.company);
 });
-document.getElementById('gen-brief-btn').addEventListener('click', function() {
-  showModal(document.getElementById('account-brief-content').innerHTML);
-});
 document.querySelectorAll('[data-sync]').forEach(function(btn) {
   btn.addEventListener('click', function() {
     const syncType = this.dataset.sync;
@@ -274,19 +242,18 @@ document.querySelectorAll('[data-send-gift]').forEach(function(btn) {
     const contactId = this.dataset.contactId;
     const giftTier = this.dataset.giftTier;
     const giftName = this.dataset.giftName;
+    this.disabled = true;
+    this.textContent = 'Sending…';
     fetch(`/api/contact/${contactId}/gift`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gift_tier: giftTier, gift_name: giftName, play: '{{ account.play }}' }),
     })
       .then((r) => r.json())
-      .then(() => openFlowModal('gift'));
-  });
-});
-document.querySelectorAll('[data-flow]').forEach(function(btn) {
-  btn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    openFlowModal(this.dataset.flow);
+      .then((data) => {
+        this.textContent = 'Gift Sent ✓';
+        showModal(`<h3>Gift on its way</h3><p>${escapeHtml(giftName)} queued for ${escapeHtml(data.contact_name || 'this contact')}.</p><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>`);
+      });
   });
 });
 </script>

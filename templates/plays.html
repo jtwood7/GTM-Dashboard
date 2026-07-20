@@ -27,7 +27,6 @@
       <span class="muted" style="font-size:12px">{{ g.known_contacts_total }} known contact{{ 's' if g.known_contacts_total != 1 else '' }}</span>
     </div>
     <div class="right-actions" onclick="event.stopPropagation()">
-      <button class="btn btn-secondary btn-sm" data-play-explainer="{{ g.play }}">How does this play work?</button>
       <button class="btn btn-primary btn-sm" data-launch-play="{{ g.play }}" data-label="{{ g.label }}">Launch Play</button>
     </div>
   </div>
@@ -119,19 +118,6 @@
         </table>
       </div>
     </div>
-  </div>
-</div>
-
-<div id="play-explainer-{{ g.play }}" style="display:none">
-  <h3>{{ g.label }}</h3>
-  <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin-bottom:4px">How the signals are generated</p>
-  <p>{{ g.how_signals_work }}</p>
-  <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin-bottom:4px;margin-top:14px">Connections required</p>
-  <p>{{ g.connections_required|join(', ') }} &mdash; none of these are actually connected in this demo.</p>
-  <p style="font-weight:600;color:var(--slate-800);font-size:13px;margin-bottom:4px;margin-top:14px">What launching this play enables</p>
-  <p>{{ g.launch_explainer }}</p>
-  <div class="modal-actions">
-    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
   </div>
 </div>
 {% endfor %}

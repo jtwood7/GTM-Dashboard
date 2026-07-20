@@ -3,13 +3,14 @@ import re
 import threading
 from datetime import datetime
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 from markupsafe import Markup, escape
 
 import db
 import scheduler
 from pipeline import audience_sync, content_generator, gifting, growth_metrics
-from pipeline.account_brief import ACCOUNT_BRIEF_DEMO, build_account_brief
+from pipeline.account_brief import build_account_brief
+from pipeline.onepager_pdf import render_onepager_pdf
 from pipeline.flow_diagrams import get_flow
 from pipeline.knowledge_base import (
     ACTION_TIER_1_LABEL,
@@ -97,7 +98,7 @@ def account_report(account_id):
     return render_template(
         "account_report.html", account=account, signals=signals, grouped_contacts=grouped,
         known_contacts=known_contacts, syncs=syncs, sync_labels=audience_sync.SYNC_TYPES,
-        play=play, gift_tiers=GIFT_TIERS, brief=brief, brief_demo=ACCOUNT_BRIEF_DEMO,
+        play=play, gift_tiers=GIFT_TIERS, brief=brief,
     )
 
 
@@ -105,6 +106,36 @@ def account_report(account_id):
 def conceptual_plays_page():
     plays = [{"key": k, **CONCEPTUAL_PLAYS[k]} for k in CONCEPTUAL_PLAY_ORDER]
     return render_template("conceptual_plays.html", plays=plays, source_ideas=SOURCE_IDEAS)
+
+
+@app.route("/showcase/onepager.pdf")
+def showcase_onepager():
+    """A stable, DB-independent branded one-pager (survives the demo DB
+    resetting) — the durable URL for the example asset referenced in outreach."""
+    account = {"company_name": "Ironclad Energy Partners", "industry": "Oil & Gas", "plant_count": 20, "lifecycle_stage": "Opportunity"}
+    brief = build_account_brief(account, 4)
+    return Response(
+        render_onepager_pdf(account, brief),
+        mimetype="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="TRACTIAN-Ironclad-Energy-Partners.pdf"'},
+    )
+
+
+@app.route("/account/<int:account_id>/onepager")
+def account_onepager(account_id):
+    account = db.get_account(account_id)
+    if not account:
+        return "Not found", 404
+    contacts = db.list_contacts_for_account(account_id)
+    known = sum(1 for c in contacts if c["is_known_contact"])
+    brief = build_account_brief(account, known)
+    pdf_bytes = render_onepager_pdf(account, brief)
+    safe = re.sub(r"[^A-Za-z0-9]+", "-", account["company_name"]).strip("-")
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="TRACTIAN-{safe}.pdf"'},
+    )
 
 
 @app.route("/reporting")
